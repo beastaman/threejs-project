@@ -9,14 +9,22 @@ export default defineConfig({
   root: './',
   base: './',
   server: {
-    port: 5173,
+    port: 3000,
     host: true,
     strictPort: true,
   },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    sourcemap: true
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'three': ['three'],
+          'gsap': ['gsap']
+        }
+      }
+    }
   },
   resolve: {
     alias: {

@@ -6,9 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview",
-    "convert-video": "ffmpeg -i public/Forest_new2_fox0001-0233.mkv -c:v libx264 -c:a aac public/video.mp4"
-  },
+    "preview": "vite preview"
+    },
   "dependencies": {
     "gsap": "^3.12.2",
     "three": "^0.157.0"
