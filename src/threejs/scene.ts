@@ -2,18 +2,21 @@ import * as THREE from 'three';
 
 export function initScene() {
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x000000, 0.01); // Further reduced fog
+  scene.background = new THREE.Color(0x000000);
 
   const camera = new THREE.PerspectiveCamera(
-    60,
+    75, // Increased FOV for better fullscreen coverage
     window.innerWidth / window.innerHeight,
     0.1,
-    100
+    1000
   );
+  
+  // Position camera for fullscreen viewing
+  camera.position.z = 5;
 
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
-    alpha: true,
+    alpha: false,
     powerPreference: "high-performance"
   });
 
@@ -21,19 +24,21 @@ export function initScene() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setClearColor(0x000000, 1);
   
-  // Updated encoding properties
+  // Enhanced rendering properties for better brightness
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 2.0; // Increased exposure
-
+  renderer.toneMappingExposure = 2.0;
+  
   document.body.appendChild(renderer.domElement);
 
-  // Enhanced lighting
-  const ambientLight = new THREE.AmbientLight(0xffffff, 1.0); // Increased ambient light
+  // Enhanced lighting for better video visibility
+  const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
   const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
   directionalLight.position.set(5, 5, 5);
 
-  scene.add(ambientLight, directionalLight);
+  const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+
+  scene.add(ambientLight, directionalLight, hemisphereLight);
 
   return { scene, camera, renderer };
 }

@@ -17,99 +17,141 @@ async function setupVideo() {
   video.muted = true;
   video.playsInline = true;
   video.autoplay = true;
+  video.loop = false;
+  video.style.display = 'none';
+  document.body.appendChild(video);
 
   // Hide content initially
   const content = document.querySelector('.content') as HTMLElement;
+  const heading = content?.querySelector('h1') as HTMLElement;
+  const tagline = content?.querySelector('.tagline') as HTMLElement;
+  const newsletter = content?.querySelector('.newsletter') as HTMLElement;
+
   if (content) {
-    content.style.opacity = '0';
     content.style.visibility = 'hidden';
+    gsap.set([heading, tagline, newsletter], {
+      opacity: 0,
+      y: 50,
+      scale: 0.9
+    });
   }
 
   try {
+    await new Promise((resolve, reject) => {
+      video.addEventListener('loadeddata', resolve, { once: true });
+      video.addEventListener('error', reject, { once: true });
+      video.load();
+    });
+
     await video.play();
     
     const videoTexture = new THREE.VideoTexture(video);
     videoTexture.minFilter = THREE.LinearFilter;
     videoTexture.magFilter = THREE.LinearFilter;
-    videoTexture.format = THREE.RGBAFormat;
     videoTexture.colorSpace = THREE.SRGBColorSpace;
 
-    // Adjust plane size for better responsiveness
-    const screenAspect = window.innerWidth / window.innerHeight;
-    const videoAspect = video.videoWidth / video.videoHeight;
-    let planeWidth = screenAspect > 1 ? 20 : 15;
-    let planeHeight = planeWidth / videoAspect;
+    // Calculate proper fullscreen dimensions
+    const fov = camera.fov * (Math.PI / 180);
+    const distance = camera.position.z;
+    const vFOV = 2 * Math.tan(fov / 2) * distance;
+    const hFOV = vFOV * camera.aspect;
+
+    // Use these dimensions to ensure fullscreen coverage
+    const planeWidth = hFOV;
+    const planeHeight = vFOV;
 
     const geometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
     
-    // Enhanced material with increased brightness
+    // Enhanced material for better brightness
     const material = new THREE.MeshStandardMaterial({ 
       map: videoTexture,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0,
-      color: new THREE.Color(1.4, 1.4, 1.4), // Increased brightness
-      emissive: new THREE.Color(0.2, 0.2, 0.2), // Add slight glow
+      side: THREE.FrontSide,
+      color: new THREE.Color(1.3, 1.3, 1.3),
+      emissive: new THREE.Color(0.15, 0.15, 0.15),
       emissiveMap: videoTexture,
-      emissiveIntensity: 0.4
+      emissiveIntensity: 0.3,
+      roughness: 0.8,
+      metalness: 0.0
     });
 
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(0, 0, -1);
+    mesh.position.set(0, 0, 0); // Center at origin
     scene.add(mesh);
 
-    // Enhanced lighting setup
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
-    const pointLight1 = new THREE.PointLight(0xffffff, 1.5);
-    const pointLight2 = new THREE.PointLight(0xffffff, 1.5);
+    // Add additional point lights for brightness
+    const pointLight1 = new THREE.PointLight(0xffffff, 1.2, 30);
+    pointLight1.position.set(0, 0, 5);
+    const pointLight2 = new THREE.PointLight(0xffffff, 0.8, 25);
+    pointLight2.position.set(-5, 5, 3);
+    const pointLight3 = new THREE.PointLight(0xffffff, 0.8, 25);
+    pointLight3.position.set(5, -5, 3);
     
-    pointLight1.position.set(5, 5, 5);
-    pointLight2.position.set(-5, -5, 5);
-    
-    scene.add(ambientLight, pointLight1, pointLight2);
+    scene.add(pointLight1, pointLight2, pointLight3);
 
-    // Fade in with higher final opacity
-    gsap.to(material, {
-      opacity: 1,
-      duration: 1.5,
-      ease: "power2.out"
-    });
-
-    // Simplified video end handling
+    // Video end event
     video.addEventListener('ended', () => {
       if (content) {
-        // Simple fade in for content
         content.style.visibility = 'visible';
-        gsap.to(content, {
-          opacity: 1,
-          duration: 1,
-          ease: "power2.out"
+        
+        const tl = gsap.timeline({
+          defaults: { ease: "power3.out" }
         });
+
+        tl.to(heading, {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 1.2,
+        })
+        .to(tagline, {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 1,
+        }, "-=0.7")
+        .to(newsletter, {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.8,
+        }, "-=0.5");
       }
-      video.currentTime = video.duration;
+      
+      video.currentTime = video.duration - 0.1;
     });
 
-    // Simpler camera position
-    camera.position.z = 8;
+    // Enhanced resize handler
+    function handleResize() {
+      const newFOV = 2 * Math.tan(fov / 2) * distance;
+      const newHFOV = newFOV * camera.aspect;
+      
+      mesh.geometry.dispose();
+      mesh.geometry = new THREE.PlaneGeometry(newHFOV, newFOV);
+    }
 
+    window.addEventListener('resize', handleResize);
+
+    // Animation loop
     function animate() {
       requestAnimationFrame(animate);
+      if (video.readyState === 4) {
+        videoTexture.needsUpdate = true;
+      }
       renderer.render(scene, camera);
     }
     animate();
 
   } catch (error) {
-    console.error('Error loading video:', error);
+    console.error('Video setup failed:', error);
   }
 }
 
+// Handle window resize
 window.addEventListener('resize', () => {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  
-  camera.aspect = width / height;
+  camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(width, height);
+  renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-setupVideo();
+// Initialize
+setupVideo().catch(console.error);
